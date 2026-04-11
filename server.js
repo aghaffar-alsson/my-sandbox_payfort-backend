@@ -17,7 +17,7 @@ const app = express();
 dotenv.config();
 
 // BASE URL — DO NOT TOUCH
-const PUBLIC_URL = process.env.PUBLIC_URL || "https://my-payfort-backend.onrender.com";
+const PUBLIC_URL = process.env.PUBLIC_URL || "https://my-sandbox-payfort-backend.onrender.com";
 
 // RECEIPTS DIR (correct place)
 const RECEIPTS_DIR = path.join(__dirname, "receipts");
