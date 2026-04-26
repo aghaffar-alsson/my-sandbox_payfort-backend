@@ -47,9 +47,17 @@ app.use((req, res, next) => {
 
 app.use(cors({
   origin: function (origin, callback) {
+
+    // ✅ Allow server-to-server (no origin)
     if (!origin) return callback(null, true);
 
+    // ✅ Allow your frontend
     if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+
+    // ✅ Allow Payfort explicitly
+    if (origin.includes("payfort.com")) {
       return callback(null, true);
     }
 
