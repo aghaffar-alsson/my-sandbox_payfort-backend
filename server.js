@@ -33,6 +33,28 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 app.use(express.json());
 
+// 🔐 Optional security whitelist
+const allowedOrigins = [
+  "http://localhost:5173",
+  "http://localhost:5174",
+  "https://alsson-web-fees-features-2pr9.vercel.app",
+  "https://fees.family.alsson.app",
+];
+
+app.use(cors({
+origin: function (origin, callback) {
+  if (!origin) return callback(null, true); // mobile apps / postman
+
+  if (allowedOrigins.includes(origin)) {
+    return callback(null, true);
+  }
+
+  return callback(new Error("Not allowed by CORS"));
+},
+methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+allowedHeaders: ["Content-Type", "Authorization"],
+credentials: true
+}));
 
 // ---------- SQL CONFIG ----------
 const sqlConfig = {
@@ -186,7 +208,7 @@ function verifySignature(params, schoolId) {
   console.log("Generated:", generatedSignature);
   console.log("Received:", receivedSignature);
   //Logging the entire payload and critical values for debugging
-  console.log("APS PAYLOAD:", payload);
+  //console.log("APS PAYLOAD:", payload);
   console.log("STRING TO HASH:", stringToHash);
   console.log("GENERATED:", generatedSignature);
   console.log("RECEIVED:", receivedSignature);
@@ -231,29 +253,8 @@ const {
       return res.status(400).json({ error: "frontendOrigin is required" });
     }
 
-    // 🔐 Optional security whitelist
-    const allowedOrigins = [
-      "http://localhost:5173",
-      "http://localhost:5174",
-      "https://alsson-web-fees-features-2pr9.vercel.app",
-      "https://fees.family.alsson.app",
-    ];
-
-  app.use(cors({
-    origin: function (origin, callback) {
-      if (!origin) return callback(null, true); // mobile apps / postman
-  
-      if (allowedOrigins.includes(origin)) {
-        return callback(null, true);
-      }
-  
-      return callback(new Error("Not allowed by CORS"));
-    },
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
-    credentials: true
-  }));
-      
+    //after app.use(cors()) and before any route handlers, to enforce the whitelist on all routes
+    console.log("Received frontendOrigin:", frontendOrigin);
     if (!allowedOrigins.includes(frontendOrigin)) {
       return res.status(400).json({ error: "Invalid frontend origin" });
     }
@@ -311,8 +312,27 @@ const {
     console.log("Generated signature:", formPayLoad.signature);
     console.log("Payload AFTER signature:", formPayLoad);
 
-    // here insert a record to keep track the merchant reference and the school id
-    const pool = await sql.connect(sqlConfig);
+  // here insert a record to keep track the merchant reference and the school id
+  let pool;
+
+  try {
+    pool = await sql.connect(sqlConfig);
+  } catch (err) {
+    console.error("SQL CONNECTION FAILED:", err);
+    return res.status(500).json({
+      error: "Database connection failed",
+      details: err.message
+    });
+  }
+
+  // 🚨 HARD GUARD
+  if (!pool) {
+    return res.status(500).json({
+      error: "Database pool is undefined"
+    });
+  }
+
+await pool.request()
   await pool.request()
   .input("merchant_reference", sql.VarChar(50), orderID)
   .input("school_id", sql.Int, schoolCode)
@@ -384,6 +404,7 @@ const {
     });
   }
 });
+
 
 // ---------- LOG PAYMENT ACTION ----------
 // ---------- LOG PAYMENT ACTION ----------
